@@ -2,7 +2,7 @@
 
 > A static but highly interactive 3D portfolio website with green screen videos, Three.js animations, AI chatbot, and gamified UI.
 
-![portfolio link]([https://via.placeholder.com/800x400?text=Portfolio+Screenshot](https://saiyam-creator.github.io/3d-enhenced-portfolio/))  
+
 <img width="1919" height="1003" alt="Screenshot 2026-04-16 093513" src="https://github.com/user-attachments/assets/110c1151-f258-4523-826e-faa2b7467bd4" />
 
 
