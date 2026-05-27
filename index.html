@@ -7,6 +7,12 @@
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<!-- Firebase SDKs -->
+<!-- Firebase SDKs (compat version for simplicity) -->
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+
 
 <style>
 /* ════════════════════════════════════════
@@ -1550,9 +1556,331 @@ body::after {
   transform: scale(1.02);
   filter: drop-shadow(0 0 25px rgba(177,110,245,0.7));
 }
+#sendMessageBtn:disabled,
+.form-input:disabled,
+.form-textarea:disabled {
+  background-color: #f5f5f5;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+#login-section, #user-info, #contact-form-container, #auth-message {
+  transition: all 0.3s ease;
+}
+#auth-message {
+  background: #fff3cd;
+  border-left: 5px solid #ffc107;
+  padding: 10px;
+  margin: 20px 0;
+}
+#user-info {
+  background: #e9f7ef;
+  padding: 10px;
+  border-radius: 8px;
+}
+.contact-container {
+  display: flex;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+.form-wrapper {
+  position: relative;
+  flex: 1;
+  min-width: 280px;
+}
+.login-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  border-radius: 24px;
+  transition: all 0.3s ease;
+}
+.overlay-content {
+  text-align: center;
+  padding: 2rem;
+  background: white;
+  border-radius: 24px;
+  box-shadow: 0 20px 35px rgba(0,0,0,0.2);
+  max-width: 280px;
+}
+.google-btn {
+  background: #4285f4;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 40px;
+  font-size: 1rem;
+  cursor: pointer;
+  margin-top: 1rem;
+  font-weight: bold;
+}
+.google-btn:hover {
+  background: #357ae8;
+}
+.contact-form-card {
+  transition: filter 0.3s;
+  background: white;
+  padding: 1.5rem;
+  border-radius: 24px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+}
+/* Blur effect when overlay is present */
+.form-wrapper.blurred .contact-form-card {
+  filter: blur(4px);
+  pointer-events: none;
+  user-select: none;
+}
+/* Hide overlay when logged in */
+.form-wrapper.logged-in #loginOverlay {
+  display: none;
+}
+.form-wrapper.logged-in .contact-form-card {
+   filter: none;
+  pointer-events: none;
+}
+/* Readonly email style */
+#contactEmail:read-only {
+  background-color: #1a1a1a;
+  cursor: default;
+}
+
+/* Yeh line add karo existing CSS mein */
+.form-wrapper:not(.blurred) .contact-form-card {
+  filter: none;
+  pointer-events: auto;
+  user-select: auto;
+}
+.page-overlay {
+  position: fixed;
+  inset: 0;                          /* top:0 left:0 right:0 bottom:0 */
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);        /* ← background blur */
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;               /* ← vertically center */
+  justify-content: center;           /* ← horizontally center */
+  z-index: 9999;
+  transition: opacity 0.3s ease;
+}
+
+.page-overlay.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.login-popup {
+  background: #1a1a2e;
+  border: 1px solid #7c3aed55;
+  border-radius: 20px;
+  padding: 2rem;
+  width: 340px;
+  text-align: center;
+  position: relative;                /* close button ke liye */
+  box-shadow: 0 0 40px #7c3aed44;
+  animation: popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.form-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.2rem;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.user-info {
+  display: none;                     /* default hidden */
+  align-items: center;
+  gap: 8px;
+  background: #ffffff10;
+  padding: 6px 10px 6px 6px;
+  border-radius: 50px;
+  border: 1px solid #7c3aed33;
+}
+
+.user-info.visible { display: flex; }
+
+.avatar {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #7c3aed, #a855f7);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; color: #fff; font-weight: 700;
+}
+
+.logout-btn {
+  background: #ff4d4d22;
+  border: 1px solid #ff4d4d55;
+  color: #ff7070;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.logout-btn:hover { background: #ff4d4d44; color: #fff; }
+
+/* Overlay - full screen blur */
+.page-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  transition: opacity 0.3s ease;
+}
+
+.page-overlay.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Popup card */
+.login-popup {
+  background: #1a1a2e;
+  border: 1px solid #7c3aed55;
+  border-radius: 28px;
+  padding: 2rem 2rem 2rem 2rem;
+  width: 340px;
+  max-width: 90%;
+  text-align: center;
+  position: relative;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.4), 0 0 0 1px #7c3aed33;
+  animation: popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Close button (top-right) */
+.close-btn {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  background: none;
+  border: none;
+  color: #aaa;
+  font-size: 22px;
+  cursor: pointer;
+  transition: color 0.2s;
+  line-height: 1;
+  padding: 4px 8px;
+}
+.close-btn:hover {
+  color: #ffffff;
+}
+
+/* Icon */
+.popup-icon {
+  font-size: 56px;
+  margin-bottom: 12px;
+}
+
+/* Title */
+.popup-title {
+  font-size: 28px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #fff, #a855f7);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  margin-bottom: 8px;
+}
+
+/* Subtitle text */
+.popup-sub {
+  color: #b0b0b0;
+  font-size: 14px;
+  line-height: 1.5;
+  margin-bottom: 24px;
+}
+
+/* Google Sign-in button */
+.google-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  background: #ffffff;
+  border: none;
+  border-radius: 40px;
+  padding: 12px 16px;
+  font-size: 16px;
+  font-weight: 500;
+  color: #1f1f2f;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+  margin-bottom: 12px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+.google-btn:hover {
+  background: #f0f0f0;
+  transform: scale(0.98);
+}
+.google-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* Skip button */
+.skip-btn {
+  background: transparent;
+  border: 1px solid #7c3aed66;
+  color: #c084fc;
+  border-radius: 40px;
+  padding: 8px 16px;
+  font-size: 14px;
+  cursor: pointer;
+  width: 100%;
+  transition: all 0.2s;
+}
+.skip-btn:hover {
+  background: #7c3aed22;
+  border-color: #a855f7;
+  color: #e9d5ff;
+}
+
+/* Pop-in animation */
+@keyframes popIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.9) translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
 </style>
 </head>
 <body>
+  <div class="page-overlay" id="pageOverlay">
+  <div class="login-popup">
+    <button class="close-btn" id="closePopup">✕</button>
+    <div class="popup-icon">🔐</div>
+    <div class="popup-title">Welcome!</div>
+    <div class="popup-sub">Login karke message bhejo.<br>Your info stays safe.</div>
+   <button class="google-btn" id="popupGoogleBtn">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="20px" height="20px">
+    <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z" />
+    <path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z" />
+    <path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z" />
+    <path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z" />
+  </svg>
+  Sign in with Google
+</button>
+    <button class="skip-btn" id="skipPopup">Skip for now</button>
+  </div>
+</div>
   <div class="mouse-glow" id="mouseGlow"></div>
   <div class="scroll-progress" id="scrollProgress"></div>
 <canvas id="matrix-canvas"></canvas>
@@ -1961,6 +2289,14 @@ body::after {
 
 <!-- ═══════════════════ CONTACT ═══════════════════ -->
 <section id="contact">
+  <div class="form-header">
+  <div class="form-title">Send a Message</div>
+  <div class="user-info" id="userInfoBar">
+    <div class="avatar" id="userAvatar"></div>
+    <div class="user-name" id="userName"></div>
+    <button class="logout-btn" id="logoutBtn">Logout</button>
+  </div>
+</div>
   <div class="section">
     <div class="section-eyebrow reveal">Let's Collaborate</div>
     <h2 class="section-title reveal">Get In <span>Touch</span></h2>
@@ -2007,27 +2343,53 @@ body::after {
         </div>
       </div>
 
-      <div class="contact-form-card reveal from-right">
+    <section class="contact-section">
+  <div class="contact-container">
+    <!-- Left side: DIRECT CONTACT, SOCIAL, EXPERTISE (jo aapne screenshot mein dikhaya) 
+         Use your existing content here. I'm showing only the right side for brevity -->
+    
+       <div class="form-wrapper" id="formWrapper">
+      <!-- Blur overlay + Google button (visible when not logged in) -->
+      <div id="loginOverlay" class="login-overlay">
+        <div class="overlay-content">
+          <h3>🔐 Login Required</h3>
+          <p>Please sign in with Google to access the contact form.</p>
+          <button id="googleSigninBtn" class="google-btn">Sign in with Google</button>
+        </div>
+      </div>
+      
+      <!-- The actual contact form (will be blurred until login) -->
+      <div class="contact-form-card" id="contactFormCard">
         <div class="form-title">Send a Message</div>
         <div class="form-row">
           <div class="form-group">
             <label class="form-label">Name *</label>
-            <input type="text" class="form-input" placeholder="Your full name" id="contactName">
+            <input type="text" class="form-input" id="contactName" placeholder="Your full name" required>
           </div>
           <div class="form-group">
             <label class="form-label">Email *</label>
-            <input type="email" class="form-input" placeholder="your@email.com" id="contactEmail">
+            <input type="email" class="form-input" id="contactEmail" placeholder="your@email.com" readonly>
           </div>
         </div>
-        <div class="form-group" style="margin-bottom:14px;">
+        <div class="form-group">
           <label class="form-label">Subject</label>
-          <input type="text" class="form-input" placeholder="What's this about?" id="contactSubject">
+          <input type="text" class="form-input" id="contactSubject" placeholder="What's this about?">
         </div>
-        <div class="form-group" style="margin-bottom:16px;">
+        <div class="form-group">
+  <label class="form-label">Phone Number</label>
+  <input type="tel" class="form-input" id="contactPhone" 
+         placeholder="10-digit mobile number" 
+         maxlength="10" 
+         pattern="[6-9][0-9]{9}">
+  <small id="phoneError" style="color:red; display:none;">
+    Enter a valid 10-digit Indian mobile number
+  </small>
+</div>
+        <div class="form-group">
           <label class="form-label">Message *</label>
-          <textarea class="form-textarea" placeholder="Tell me about your project..." id="contactMsg"></textarea>
+          <textarea class="form-textarea" id="contactMsg" placeholder="Tell me about your project..." required></textarea>
         </div>
-        <button class="form-submit" onclick="sendMessage()">⚡ Send Message</button>
+        <button class="form-submit" id="sendMsgBtn">⚡ Send Message</button>
       </div>
     </div>
   </div>
@@ -2116,6 +2478,213 @@ body::after {
   <i class="fas fa-robot"></i>
   <span class="chatbot-notif" id="chatNotif">1</span>
 </button>
+<script> // Firebase config (replace with your own)
+
+// ─── 1. FIREBASE INIT (SABSE PEHLE) ───────────────────────────
+const firebaseConfig = {
+  apiKey: "AIzaSyAtZ-WIJa8kgVUDQDPgIemsLF6WVsgukgA",
+  authDomain: "portfolio-contact-aefc0.firebaseapp.com",
+  projectId: "portfolio-contact-aefc0",
+  storageBucket: "portfolio-contact-aefc0.firebasestorage.app",
+  messagingSenderId: "759915316011",
+  appId: "1:759915316011:web:b789bc7d097a6007af3b6e",
+  measurementId: "G-Q7TJSQKFTL"
+};
+firebase.initializeApp(firebaseConfig);
+const db   = firebase.firestore();
+const auth = firebase.auth();
+const provider = new firebase.auth.GoogleAuthProvider();
+
+// ─── 2. DOM ELEMENTS ──────────────────────────────────────────
+const formWrapper  = document.getElementById('formWrapper');
+const sendBtn      = document.getElementById('sendMsgBtn');
+const nameInput    = document.getElementById('contactName');
+const emailInput   = document.getElementById('contactEmail');
+const subjectInput = document.getElementById('contactSubject');
+const msgInput     = document.getElementById('contactMsg');
+const phoneInput   = document.getElementById('contactPhone');
+const phoneError   = document.getElementById('phoneError');
+const userInfoBar  = document.getElementById('userInfoBar');
+const userAvatar   = document.getElementById('userAvatar');
+const userNameEl   = document.getElementById('userName');
+
+// ─── 3. OVERLAY FUNCTIONS ─────────────────────────────────────
+function showOverlay() {
+  document.getElementById('pageOverlay').classList.remove('hidden');
+}
+function closeOverlay() {
+  document.getElementById('pageOverlay').classList.add('hidden');
+}
+
+// ─── 4. PHONE VALIDATION ──────────────────────────────────────
+phoneInput.addEventListener('input', () => {
+  phoneInput.value = phoneInput.value.replace(/\D/g, '');
+});
+
+function isValidPhone(num) {
+  if (num.length !== 10) return false;
+  if (!/^[6-9]/.test(num)) return false;
+  if (/^(\d)\1{9}$/.test(num)) return false;
+  if (/^(1234567890|9876543210|0123456789)$/.test(num)) return false;
+  return true;
+}
+
+// ─── 5. STORE USER IN DB (LOGIN PE HI) ───────────────────────
+async function storeUserIfNew(user) {
+  if (!user) return;
+  const userRef = db.collection('users').doc(user.uid);
+  const doc = await userRef.get();
+  if (!doc.exists) {
+    await userRef.set({
+      uid:       user.uid,
+      email:     user.email,
+      name:      user.displayName || '',
+      photoURL:  user.photoURL || '',
+      phone:     '',
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    console.log('New user saved in DB');
+  } else {
+    await userRef.update({
+      lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    console.log('User lastLogin updated');
+  }
+}
+
+// ─── 6. LOGIN SUCCESS UI UPDATE ───────────────────────────────
+function onLoginSuccess(user) {
+  // Form unlock
+  formWrapper.classList.remove('blurred');
+  formWrapper.classList.add('logged-in');
+
+  // Form fill
+  nameInput.value  = user.displayName || '';
+  emailInput.value = user.email || '';
+  emailInput.setAttribute('readonly', true);
+  nameInput.removeAttribute('readonly');
+  subjectInput.removeAttribute('readonly');
+  msgInput.removeAttribute('readonly');
+
+  // Logout bar
+  const initials = (user.displayName || 'U')
+    .split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+  userAvatar.textContent  = initials;
+  userNameEl.textContent  = user.displayName || user.email;
+  userInfoBar.classList.add('visible');
+
+  // Close popup + save user
+  closeOverlay();
+  storeUserIfNew(user);
+}
+
+// ─── 7. LOGOUT ────────────────────────────────────────────────
+document.getElementById('logoutBtn').onclick = () => {
+  auth.signOut().then(() => {
+    formWrapper.classList.remove('logged-in');
+    formWrapper.classList.add('blurred');
+    userInfoBar.classList.remove('visible');
+    nameInput.value    = '';
+    emailInput.value   = '';
+    subjectInput.value = '';
+    msgInput.value     = '';
+    phoneInput.value   = '';
+    showOverlay();
+  });
+};
+
+// ─── 8. GOOGLE SIGN IN (POPUP BUTTON) ────────────────────────
+document.getElementById('popupGoogleBtn').onclick = () => {
+  auth.signInWithPopup(provider)
+    .then(result => onLoginSuccess(result.user))
+    .catch(err => alert('Login failed: ' + err.message));
+};
+
+// Agar form ke andar bhi Google button hai toh
+const oldSigninBtn = document.getElementById('googleSigninBtn');
+if (oldSigninBtn) {
+  oldSigninBtn.onclick = () => {
+    auth.signInWithPopup(provider)
+      .then(result => onLoginSuccess(result.user))
+      .catch(err => alert('Login failed: ' + err.message));
+  };
+}
+
+// ─── 9. CLOSE / SKIP POPUP ───────────────────────────────────
+document.getElementById('closePopup').onclick = closeOverlay;
+document.getElementById('skipPopup').onclick  = closeOverlay;
+
+// ─── 10. AUTH STATE LISTENER ─────────────────────────────────
+auth.onAuthStateChanged(user => {
+  if (user) {
+    onLoginSuccess(user);
+  } else {
+    formWrapper.classList.remove('logged-in');
+    formWrapper.classList.add('blurred');
+    userInfoBar.classList.remove('visible');
+    showOverlay();
+  }
+});
+
+// ─── 11. SEND MESSAGE ─────────────────────────────────────────
+sendBtn.addEventListener('click', async () => {
+  const user = auth.currentUser;
+  if (!user) { showOverlay(); return; }
+
+  const name    = nameInput.value.trim();
+  const email   = emailInput.value.trim();
+  const subject = subjectInput.value.trim();
+  const message = msgInput.value.trim();
+  const phone   = phoneInput.value.trim();
+
+  // Phone check
+  if (phone && !isValidPhone(phone)) {
+    phoneError.style.display = 'block';
+    phoneInput.focus();
+    return;
+  }
+  phoneError.style.display = 'none';
+
+  // Required fields
+  if (!name || !email || !message) {
+    alert('Name, Email aur Message required hain.');
+    return;
+  }
+
+  sendBtn.disabled    = true;
+  sendBtn.textContent = 'Sending...';
+
+  try {
+    await db.collection('contacts').add({
+      name,
+      email,
+      subject:   subject || 'No subject',
+      message,
+      phone:     phone || 'Not provided',
+      userId:    user.uid,
+      timestamp: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    if (phone) {
+      await db.collection('users').doc(user.uid).update({ phone });
+    }
+
+    alert('Message sent successfully!');
+    subjectInput.value = '';
+    msgInput.value     = '';
+    phoneInput.value   = '';
+
+  } catch (err) {
+    console.error(err);
+    alert('Failed to send. Try again later.');
+  } finally {
+    sendBtn.disabled    = false;
+    sendBtn.textContent = '⚡ Send Message';
+  }
+});
+
+</script>
 <script>
 /* ════════════════════════════════════════
    PROJECTS DATA
@@ -2136,6 +2705,9 @@ var PROJECTS = [
   {id:'p13',title:'SafeSpace',category:['website','showcase'],description:'Peer listening platform connecting speakers with volunteer listeners anonymously.',tags:['React','Firebase','EmailJS'],demoLink:'https://safespaces-rust.vercel.app/',codeLink:'https://github.com/saiyam-creator/safespaces',features:['🧘 Peer Listening','🔒 Anonymous','❤️ Safe Space','📧 Notifications'],img:'https://i.ibb.co/tp9SsTmP/Screenshot-2026-03-30-230445.png'},
   {id:'p14',title:'Ghost Room',category:['website','showcase'],description:'Temporary private chat rooms with unique keys, timers, and media support.',tags:['JavaScript','React','Supabase'],demoLink:'https://saiyam-creator.github.io/ghost-room/',codeLink:'https://github.com/saiyam-creator/ghostroom',features:['👻 Private Rooms','⏱️ Timers','📸 Media','🔑 Unique Keys'],img:'https://i.ibb.co/wZWp7mXK/Screenshot-2026-03-13-204131.png'},
   {id:'p15',title:'Companion Connect',category:['website'],description:'Find your companion — real people doing real things together near you.',tags:['HTML','JSON','Firebase','Vercel','JavaScript'],demoLink:'https://companion-connect-beta.vercel.app/',codeLink:null,features:['👥 Local Connect','📍 Location Based','🤝 Real Meetups','⚡ Realtime'],img:'https://i.ibb.co/XZVm2T2k/Screenshot-2026-03-30-230223.png'},
+  {id:'p16',title:'Karate e-com',category:['website'],description:'The new way of shopping',tags:['HTML5', 'CSS3', 'GSAP3' ,'Firebase', 'Canvas API','JavaScript', 'Google Fonts'],demoLink:'https://saiyam-creator.github.io/karate-e-com/',codeLink:'https://github.com/saiyam-creator/karate-e-com',features:[
+
+'🎞️ GSAP ScrollTrigger' ,'🖱️ Custom Cursor','🌟 Cinematic Loader','🃏 Featured Card Slider','🛒 Full Cart System	Add, remove, quantity control, subtotal, delivery calc,',' 💳 3-Step Checkout Modal','🔥 Firebase Auth','📱 Product Showcase','🎨 Motion UI', '📦 All Products Page'],img:'https://i.ibb.co/MynnC6JY/Screenshot-2026-05-27-140939.png'},
 ];
 
 var FAVORITES = [];
